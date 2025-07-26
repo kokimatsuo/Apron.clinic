@@ -1,0 +1,101 @@
+# 医療音声要約アプリ（medical-voice-app）仕様書・引継ぎ資料
+
+## 🧩 使用技術スタック
+
+| 項目               | 使用技術                                 |
+|--------------------|------------------------------------------|
+| フレームワーク     | Next.js 15.4.2（App Router）             |
+| 言語               | TypeScript                               |
+| UI ライブラリ      | Tailwind CSS                             |
+| デプロイ           | Vercel（予定）                           |
+| AI音声認識         | OpenAI Whisper API（`/api/transcribe`）  |
+| 要約AI             | GPT-4o（OpenAI） / Gemini 1.5 Pro（Google） |
+| 音声フォーマット   | `.mp3`, `.wav`, `.m4a`, `.mp4`, など      |
+
+---
+
+## 📁 ディレクトリ構造（抜粋）
+
+/app
+├── page.tsx // トップページ（UI）
+├── api
+│ ├── transcribe/route.js // Whisper音声→文字起こしAPI
+│ └── summary/route.js // GPTまたはGeminiで要約API
+├── components
+│ └── MedicalVoiceApp.js // メインのアプリコンポーネント
+
+
+---
+
+## 🔑 環境変数（.env.local）
+
+```env
+OPENAI_API_KEY=sk-...
+GOOGLE_API_KEY=AIzaSyD_...
+※next.config.jsでも env に渡されている
+
+🎧 /api/transcribe 概要
+POST メソッド
+
+音声ファイル（FormData）を受け取り、Whisperで文字起こし
+
+対応フォーマット：flac, m4a, mp3, mp4, mpeg, mpga, oga, ogg, wav, webm
+
+出力：全文文字起こし（transcript）
+
+🧠 /api/summary 概要
+POST メソッド
+
+リクエストボディ：
+
+
+{
+  "text": "string",         // 文字起こし済みテキスト
+  "model": "gpt" | "google",// 要約モデル選択
+  "prompt": "string",       // 任意プロンプト（オプション）
+  "modelName": "string"     // googleモデル明示（例: "models/gemini-1.5-pro"）
+}
+GPT使用時：
+
+モデル：gpt-4o
+
+システムプロンプト：
+
+あなたは総合病院で働くベテランの医師です。
+電子カルテに記載するため、診療内容を正確かつ簡潔に記述してください。
+看護師や他の医療スタッフにも伝わるよう、略語や専門用語は可能な範囲でわかりやすく変換してください。
+Google Gemini使用時：
+
+モデル：デフォルトは models/gemini-1.5-pro
+
+GOOGLE_API_KEY が有効である必要あり
+
+無料枠は非常に制限あり（1分あたり・日次のリクエスト上限）
+
+🖊️ プロンプト入力欄のUI仕様
+コンポーネント：MedicalVoiceApp.js
+
+入力欄のTailwindCSSクラス：
+
+
+<textarea
+  className="w-full min-h-[120px] max-h-[300px] p-2 border border-gray-300 rounded resize-y overflow-auto"
+/>
+⚠️ 注意点（トラブル回避）
+Google Gemini使用時は、**モデル名を正しく指定**する必要あり（例：models/gemini-1.5-pro）
+
+Gemini無料枠は非常に小さいため、**429エラー（Rate Limit）**に注意
+
+.env.local に誤記があるとAPIが無効化される（例：キー名ミス）
+
+prompt 入力欄が狭いと、要約品質が下がるのでUI調整済み
+
+✅ 今後の改善候補
+SOAP形式／自由形式をUIで選択切替可能に
+
+要約文字数の指定（例：300文字以内）
+
+自動保存機能（要約結果と音声の紐付け）
+
+PDFやCSVエクスポート機能
+
